@@ -1590,15 +1590,12 @@ git commit -m "feat(core): add 国士無双 shanten special form"
 - [ ] **Step 1: Add failing test for open hand**
 
 ```swift
-    func testShantenOpenHand() {
+    func testShantenOpenHand_Tenpai() {
         // 副露: 1 chi (下家) + 1 pon (上家) = 6 tiles
-        // 加上 7 closed tiles = 13 total (closed + 3*melds)
-        // For 4m+1p form, we need (4 - melds) = 2 more melds + 1 pair from closed.
-        // 6 closed tiles = 2 melds → shanten 0
-        // Actually: 2 melds + 1 pair needs 8 closed tiles, so with 6 closed:
-        //   2 melds → 4m+1p with 2 melds × 4m-2 = wait, formula: shanten = 8 - 2*m - p
-        //   For open: melds_fixed = 2, so we need (4-2)=2 more melds from closed, plus 1 pair.
-        //   closed = 6 tiles = 2 melds exactly. no room for pair. → shanten = 1
+        // Closed: 234p 567p 白 (2 closed melds + 1 dead tile) = 7 tiles
+        // Total: 13 tiles. The 14th tile (the draw) can pair with 白 → tenpai.
+        // Formula: 8 - 2*(m_closed + m_fixed) - p_closed
+        //         = 8 - 2*(2 + 2) - 0 = 0 (tenpai)
         let chi = Meld(
             kind: .chi,
             tiles: [Tile(suit: .m, rank: 2), Tile(suit: .m, rank: 3), Tile(suit: .m, rank: 4)],
@@ -1609,7 +1606,6 @@ git commit -m "feat(core): add 国士無双 shanten special form"
             tiles: [Tile(suit: .p, rank: 7), Tile(suit: .p, rank: 7), Tile(suit: .p, rank: 7)],
             fromPlayer: 3
         )
-        // closed tiles: 234p 567p (2 melds, 6 tiles) + 1 extra dead tile
         let closed: [Tile] = [
             Tile(suit: .p, rank: 2), Tile(suit: .p, rank: 3), Tile(suit: .p, rank: 4),
             Tile(suit: .p, rank: 5), Tile(suit: .p, rank: 6), Tile(suit: .p, rank: 7),
@@ -1625,9 +1621,40 @@ git commit -m "feat(core): add 国士無双 shanten special form"
             redFivesRemaining: [:]
         )
         let shanten = Shanten.computeOpen(hand: hand)
-        // 2 closed melds + 2 fixed melds = 4m+1p needs 1 pair from 1 leftover
-        // 1 leftover can't form pair → shanten = 1
-        XCTAssertEqual(shanten, 1, "2 fixed melds + 2 closed melds + 1 dead = 1 shanten")
+        XCTAssertEqual(shanten, 0, "2 fixed melds + 2 closed melds + 1 dead + draw = tenpai")
+    }
+
+    func testShantenOpenHand_OneShanten() {
+        // 2 fixed melds (pon + chi) = 6 tiles
+        // 8 closed = 1 closed meld (123m) + 1 closed pair (7p 7p) + 3 disconnected (1p 9p 5s) = 3+2+3 = 8
+        // Total: 14 tiles
+        // Formula: closedShanten = 8 - 2*1 - 1 = 5. openShanten = 5 - 2*2 = 1. ✓
+        let pon = Meld(
+            kind: .pon,
+            tiles: [Tile(honor: .wind(.east)), Tile(honor: .wind(.east)), Tile(honor: .wind(.east))],
+            fromPlayer: 1
+        )
+        let chiMeld = Meld(
+            kind: .chi,
+            tiles: [Tile(suit: .s, rank: 3), Tile(suit: .s, rank: 4), Tile(suit: .s, rank: 5)],
+            fromPlayer: 2
+        )
+        let closed: [Tile] = [
+            Tile(suit: .m, rank: 1), Tile(suit: .m, rank: 2), Tile(suit: .m, rank: 3),  // 123m meld
+            Tile(suit: .p, rank: 7), Tile(suit: .p, rank: 7),  // 7p pair
+            Tile(suit: .p, rank: 1), Tile(suit: .p, rank: 9), Tile(suit: .s, rank: 5),  // 3 disconnected
+        ]
+        let hand = Hand(
+            closedTiles: closed,
+            melds: [pon, chiMeld],
+            seatWind: .east,
+            roundWind: .east,
+            isRiichi: false,
+            remainingTiles: 50,
+            redFivesRemaining: [:]
+        )
+        let shanten = Shanten.computeOpen(hand: hand)
+        XCTAssertEqual(shanten, 1, "2 fixed + 2 closed melds + 2 dead (no pair possible) = 1 shanten")
     }
 ```
 
@@ -1648,19 +1675,14 @@ public static func computeOpen(hand: Hand) -> Int {
     let fixedMeldCount = hand.melds.filter { meld in
         if case .chi = meld.kind { return true }
         if case .pon = meld.kind { return true }
-        if case .kan(let closed) = meld.kind, !closed { return true }  // open kan
+        if case .kan(let closed) = meld.kind, !closed { return true }
         return false
     }.count
 
-    let closed = hand.closedTiles
-    // We need (4 - fixedMeldCount) melds from closed, plus 1 pair.
-    // Run standard shanten on closed tiles, but adjust:
-    // standard shanten = 8 - 2*m - p (where m is closed-tile melds)
-    // open shanten = 8 - 2*fixedMeldCount - 2*m - p
-    //              = standard_shanten(closed) - 2*fixedMeldCount
-    // (since standard_shanten = 8 - 2*m - p, and we add 2*fixedMeldCount savings)
-
-    let closedShanten = compute(closed: closed)
+    // The standard formula `8 - 2m - p` is calibrated for 14-tile hands, but it
+    // happens to give the right "shanten value" for the closed-tile decomposition
+    // regardless of count, because each fixed meld "saves" 2 shanten.
+    let closedShanten = compute(closed: hand.closedTiles)
     let openShanten = closedShanten - 2 * fixedMeldCount
 
     // 七对 and 国士 are not valid for open hands (require closed only).
@@ -1858,6 +1880,16 @@ final class UkeIraTests: XCTestCase {
         XCTAssertEqual(count, 3)
     }
 
+    func testCountInWall_NonRed5_RedAndNonRedVisible() {
+        // 1 red 5m + 1 non-red 5m visible, redRemaining = 0 → 3 - 2 = 1 non-red remaining
+        let count = UkeIra.countInWall(
+            tile: Tile(suit: .m, rank: 5),
+            visible: [Tile(suit: .m, rank: 5, isRed: true), Tile(suit: .m, rank: 5)],
+            redFivesRemaining: [.m: 0]
+        )
+        XCTAssertEqual(count, 1)
+    }
+
     func testCountInWall_NonRed5_OneNonRed5Visible() {
         // 1 non-red 5m visible, red 5m not used → 2 non-red 5m in wall
         let count = UkeIra.countInWall(
@@ -1922,35 +1954,26 @@ public enum UkeIra {
         visible: [Tile],
         redFivesRemaining: [Suit: Int]
     ) -> Int {
-        // Count visible tiles matching this exact tile (suit, rank, isRed)
-        let visibleCount = visible.filter { $0 == tile }.count
-
         if tile.suit.isNumberSuit && tile.rank == 5 {
             if tile.isRed {
-                // Red 5 specifically: only 1 exists at start
+                // Red 5 specifically: only 1 exists at start; visible red 5s are exact-match
+                let redVisible = visible.filter { $0 == tile }.count
                 let redRemaining = redFivesRemaining[tile.suit] ?? 0
-                return max(0, redRemaining - visibleCount)
+                return max(0, redRemaining - redVisible)
             } else {
-                // Non-red 5: 3 exist at start (4 total - 1 red)
+                // Non-red 5: 3 exist at start (4 total - 1 red).
+                // We must count ALL 5s (red + non-red) in visible, then subtract the red portion
+                // to get the non-red portion, then subtract from 3.
+                let total5sVisible = visible.filter {
+                    $0.suit == tile.suit && $0.rank == 5
+                }.count
                 let redRemaining = redFivesRemaining[tile.suit] ?? 1
-                // Total 5s in wall = 3 non-red + redRemaining
-                // visibleCount may include both red and non-red 5s
-                // We want non-red 5s remaining
-                // If 1 red 5 is in visible, then non-red visible = visibleCount - 1
-                // non-red remaining = 3 - (visibleCount - (1 - redRemaining))
-                //                  = 3 - visibleCount + 1 - redRemaining
-                //                  = 4 - visibleCount - redRemaining
-                // Hmm let me re-derive...
-                // Actually: if redRemaining = 1, no red 5 is visible (visibleCount is non-red).
-                //          non-red remaining = 3 - visibleCount.
-                // If redRemaining = 0, the red 5 is visible.
-                //          visibleCount = nonRedVisible + 1 (the red 5)
-                //          non-red remaining = 3 - (visibleCount - 1) = 4 - visibleCount
-                // General: nonRedVisible = visibleCount - (1 - redRemaining)
-                //         non-red remaining = 3 - nonRedVisible = 3 - visibleCount + (1 - redRemaining)
-                return max(0, 3 - visibleCount + (1 - redRemaining))
+                let redVisible = 1 - redRemaining   // 0 if red in wall, 1 if red is visible
+                let nonRedVisible = max(0, total5sVisible - redVisible)
+                return max(0, 3 - nonRedVisible)
             }
         } else {
+            let visibleCount = visible.filter { $0 == tile }.count
             return max(0, 4 - visibleCount)
         }
     }
@@ -2510,15 +2533,33 @@ public enum Recommend {
             )
             let ukeIraSum = ukeIra.reduce(0) { $0 + $1.count }
 
-            // Score: lower shanten first, then higher uke-ira
-            // We use a tuple (shanten, -ukeIraSum) for sorting
+            // Yaku penalty: if 0-shanten and only one yaku is possible,
+            // penalize discards that break that yaku.
+            var yakuPenalty = 0
+            if newShanten == 0 {
+                let afterHand = Hand(
+                    closedTiles: remaining, melds: hand.melds,
+                    seatWind: hand.seatWind, roundWind: hand.roundWind,
+                    isRiichi: hand.isRiichi, remainingTiles: hand.remainingTiles,
+                    redFivesRemaining: hand.redFivesRemaining
+                )
+                let yakuTags = Yaku.possibilities(hand: afterHand)
+                if yakuTags.count == 1 {
+                    // Apply a score penalty (negative = worse). Use -100 to ensure
+                    // yaku-preserving discards are preferred over yaku-breaking ones
+                    // when shanten and uke-ira tie.
+                    yakuPenalty = 100
+                }
+            }
+
+            // Score: lower shanten first, then higher uke-ira, then lower yakuPenalty
             let rec: Recommendation = .discard(
                 tile: discard,
                 reason: reasoning(shanten: newShanten, ukeIra: ukeIra),
                 shanten: newShanten,
                 ukeIra: ukeIra
             )
-            candidates.append((rec, newShanten * 10000 - ukeIraSum))
+            candidates.append((rec, newShanten * 10000 - ukeIraSum + yakuPenalty))
         }
 
         // Sort by score ascending (lower shanten, then higher uke-ira)
@@ -3941,6 +3982,8 @@ public final class OCRScheduler {
     private let layout: LayoutTemplate
     private var task: Task<Void, Never>?
     private var cycleId: UInt64 = 0
+    private var inFlight: Bool = false          // skip-if-busy guard
+    private var consecutiveParseFailures: Int = 0  // for lobby detection
     private let logger = Logger(subsystem: "com.example.MahjongAdvisor", category: "OCRScheduler")
 
     public init(
@@ -3972,9 +4015,15 @@ public final class OCRScheduler {
     }
 
     private func tick(pollIntervalSeconds: Int) async {
-        let currentCycleId = cycleId &+ 1
+        // Skip-if-busy: if a previous cycle is still in flight, skip this tick.
+        if inFlight { return }
+        inFlight = true
+        defer { inFlight = false }
+
         // Skip if paused or in lobby
         if state.mode == .paused || state.mode == .lobby { return }
+
+        let currentCycleId = cycleId &+ 1
 
         do {
             // 1. Find window
@@ -3996,19 +4045,30 @@ public final class OCRScheduler {
             // 4. Discard stale results
             guard currentCycleId == self.cycleId else { return }
 
-            // 5. Update state
-            self.state.update(ocrResult: result)
-
-            // 6. Compute recommendations
-            if let hand = buildHand(from: result) {
-                let ctx = RoundContext(
-                    discards: result.discards ?? [[], [], [], []],
-                    doraIndicators: result.doraIndicators ?? [],
-                    riichiDiscards: []
-                )
-                let recs = Recommend.compute(hand: hand, ctx: ctx)
-                self.state.update(recommendations: recs)
+            // 5. Build hand + compute recommendations
+            guard let hand = buildHand(from: result) else {
+                // Couldn't parse a 14-tile hand
+                consecutiveParseFailures += 1
+                if consecutiveParseFailures >= 3 {
+                    state.mode = .lobby
+                }
+                return
             }
+            consecutiveParseFailures = 0  // reset on success
+            if state.mode == .lobby {
+                state.mode = .collapsed  // we found a hand; back to normal
+            }
+
+            let ctx = RoundContext(
+                discards: result.discards ?? [[], [], [], []],
+                doraIndicators: result.doraIndicators ?? [],
+                riichiDiscards: []
+            )
+            let recs = Recommend.compute(hand: hand, ctx: ctx)
+
+            // 6. Update state
+            self.state.update(ocrResult: result)
+            self.state.update(recommendations: recs)
         } catch {
             logger.error("OCR cycle failed: \(error.localizedDescription)")
         }
@@ -4502,11 +4562,21 @@ final class AppDelegateAdaptor: NSObject, NSApplicationDelegate {
     }
 
     private func handleKey(_ event: NSEvent) -> NSEvent? {
+        // ⌘⇧E: toggle Edit Mode (works from any mode except paused/lobby)
+        let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if mods.contains(.command) && mods.contains(.shift),
+           event.charactersIgnoringModifiers?.lowercased() == "e" {
+            if state.mode != .paused && state.mode != .lobby {
+                state.mode = state.mode == .editing ? .collapsed : .editing
+            }
+            return nil  // swallow the key
+        }
+
         // When in Edit Mode, intercept keys for hotkey editing
         guard state.mode == .editing else { return event }
 
-        // ... TODO: implement hotkey editing
-        // For now, just return the event unchanged
+        // ... TODO: implement tile editing (←/→, 1-9, M/P/S/Z, Esc)
+        // For v1, just return the event unchanged so the rest of the keyboard works
         return event
     }
 
