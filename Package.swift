@@ -7,8 +7,6 @@ let package = Package(
     products: [],
     dependencies: [
         .package(name: "MahjongCore", path: "MahjongCore"),
-        .package(name: "MahjongOCR", path: "MahjongOCR"),
-        .package(name: "MahjongAdvisorApp", path: "MahjongAdvisorApp"),
     ],
     targets: []
 )
