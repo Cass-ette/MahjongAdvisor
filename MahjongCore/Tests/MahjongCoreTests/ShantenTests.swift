@@ -49,4 +49,35 @@ final class ShantenTests: XCTestCase {
         let shanten = Shanten.compute(closed: oneShanten)
         XCTAssertEqual(shanten, 1, "2 melds + 1 pair + 5 dead tiles = 1 shanten")
     }
+
+    func testShantenChiitoitsuTenpai() {
+        // 七对 tenpai: 6 pairs + 1 single (13 tiles)
+        let hand: [Tile] = [
+            Tile(suit: .m, rank: 1), Tile(suit: .m, rank: 1),
+            Tile(suit: .p, rank: 1), Tile(suit: .p, rank: 1),
+            Tile(suit: .p, rank: 3), Tile(suit: .p, rank: 3),
+            Tile(suit: .p, rank: 4), Tile(suit: .p, rank: 4),
+            Tile(suit: .s, rank: 5), Tile(suit: .s, rank: 5),
+            Tile(suit: .s, rank: 6), Tile(suit: .s, rank: 6),
+            Tile(suit: .s, rank: 7),  // 7th single
+        ]
+        XCTAssertEqual(hand.count, 13)
+        let shanten = Shanten.compute(closed: hand)
+        XCTAssertEqual(shanten, 0, "6 pairs + 1 single = 七对 tenpai")
+    }
+
+    func testShantenChiitoitsuOneShanten() {
+        // 七对 1-shanten: 5 pairs + 3 singles
+        let hand: [Tile] = [
+            Tile(suit: .m, rank: 1), Tile(suit: .m, rank: 1),
+            Tile(suit: .p, rank: 1), Tile(suit: .p, rank: 1),
+            Tile(suit: .p, rank: 3), Tile(suit: .p, rank: 3),
+            Tile(suit: .p, rank: 4), Tile(suit: .p, rank: 4),
+            Tile(suit: .s, rank: 5), Tile(suit: .s, rank: 5),
+            Tile(suit: .s, rank: 6), Tile(suit: .s, rank: 7),
+            Tile(suit: .s, rank: 8),
+        ]
+        let shanten = Shanten.compute(closed: hand)
+        XCTAssertEqual(shanten, 1, "5 pairs + 3 singles = 七对 1-shanten")
+    }
 }

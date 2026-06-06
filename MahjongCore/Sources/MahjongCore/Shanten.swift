@@ -2,10 +2,27 @@ import Foundation
 
 public enum Shanten {
     /// Computes shanten for a 13-tile (or 14-tile with the 14th as the draw) closed hand.
-    /// Returns 0 for tenpai, -1 for agari (winning, only for 14-tile 4m+1p),
-    /// positive for tiles away from tenpai. Standard form only (4m + 1p);
-    /// 七対 and 国士無双 are handled separately.
+    /// Returns 0 for tenpai, -1 for agari (winning, only for 14-tile 4m+1p or 七対),
+    /// positive for tiles away from tenpai.
+    /// Considers the standard 4m+1p form, the 七対 (seven pairs) special form,
+    /// and 国士無双 (handled separately in its own dedicated shanten).
     public static func compute(closed: [Tile]) -> Int {
+        let standard = standardShanten(closed)
+        let chiitoitsu = chiitoitsuShanten(closed)
+        return min(standard, chiitoitsu)
+    }
+
+    /// 七対 (seven pairs) shanten: 6 pairs = tenpai (0), 7 pairs = agari (-1).
+    /// Formula: shanten = max(-1, 6 - pair_count).
+    /// Note: 七対 requires 7 distinct pairs, so a "quad" (4-of-a-kind) counts
+    /// as 1 pair in this formula (cannot form 2 distinct pairs from the same tile).
+    private static func chiitoitsuShanten(_ closed: [Tile]) -> Int {
+        let counts = tileCounts(closed)
+        let pairCount = counts.values.filter { $0 >= 2 }.count
+        return max(-1, 6 - pairCount)
+    }
+
+    private static func standardShanten(_ closed: [Tile]) -> Int {
         // 1. Count tile occurrences
         let counts = tileCounts(closed)
 
