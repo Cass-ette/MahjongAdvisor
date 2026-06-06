@@ -9,7 +9,8 @@ public enum Shanten {
     public static func compute(closed: [Tile]) -> Int {
         let standard = standardShanten(closed)
         let chiitoitsu = chiitoitsuShanten(closed)
-        return min(standard, chiitoitsu)
+        let kokushi = kokushiShanten(closed)
+        return min(standard, chiitoitsu, kokushi)
     }
 
     /// 七対 (seven pairs) shanten: 6 pairs = tenpai (0), 7 pairs = agari (-1).
@@ -20,6 +21,52 @@ public enum Shanten {
         let counts = tileCounts(closed)
         let pairCount = counts.values.filter { $0 >= 2 }.count
         return max(-1, 6 - pairCount)
+    }
+
+    /// 国士無双 (thirteen orphans) shanten.
+    /// The hand must contain one of each of the 13 unique terminal/honor tiles
+    /// (1m 9m 1p 9p 1s 9s 东南西北白發中) plus a 14th tile that is a duplicate
+    /// of one of those 13 (forming the pair).
+    /// Formula:
+    ///   - 14-tile: shanten = max(-1, 13 - unique_count - (1 if has_pair else 0))
+    ///   - 13-tile: shanten = max(0, 13 - unique_count) — the pair only matters
+    ///     in the 14-tile agari case; with 13 tiles you must still draw the
+    ///     13th unique before the pair becomes useful.
+    private static func kokushiShanten(_ closed: [Tile]) -> Int {
+        // Required tiles: 1m 9m 1p 9p 1s 9s 东南西北白發中 (13 unique)
+        let required: [Tile] = [
+            Tile(suit: .m, rank: 1), Tile(suit: .m, rank: 9),
+            Tile(suit: .p, rank: 1), Tile(suit: .p, rank: 9),
+            Tile(suit: .s, rank: 1), Tile(suit: .s, rank: 9),
+            Tile(honor: .wind(.east)), Tile(honor: .wind(.south)),
+            Tile(honor: .wind(.west)), Tile(honor: .wind(.north)),
+            Tile(honor: .white), Tile(honor: .green),
+            Tile(honor: .red),
+        ]
+        var uniqueCount = 0
+        var hasPair = false
+        for req in required {
+            // count occurrences of this terminal/honor in the hand
+            let count = closed.filter { tile in
+                if let h = tile.honor {
+                    return h == req.honor
+                }
+                return tile.suit == req.suit && tile.rank == req.rank
+            }.count
+            if count >= 1 {
+                uniqueCount += 1
+            }
+            if count >= 2 {
+                hasPair = true
+            }
+        }
+        let isFourteen = (closed.count == 14)
+        // For 13-tile hands, the pair bonus doesn't apply: with 12 unique + 1
+        // dup you're still missing 1 unique, so you're 1 tile from tenpai.
+        // The pair only completes the hand in the 14-tile agari state.
+        let pairBonus = (isFourteen && hasPair) ? 1 : 0
+        let floor = isFourteen ? -1 : 0
+        return max(floor, 13 - uniqueCount - pairBonus)
     }
 
     private static func standardShanten(_ closed: [Tile]) -> Int {

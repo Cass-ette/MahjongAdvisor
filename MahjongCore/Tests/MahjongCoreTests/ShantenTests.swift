@@ -80,4 +80,36 @@ final class ShantenTests: XCTestCase {
         let shanten = Shanten.compute(closed: hand)
         XCTAssertEqual(shanten, 1, "5 pairs + 3 singles = 七对 1-shanten")
     }
+
+    func testShantenKokushiTenpai() {
+        // 国士十面待ち: 1m 9m 1p 9p 1s 9s 東南西北白發中 (13 unique terminals/honors)
+        let hand: [Tile] = [
+            Tile(suit: .m, rank: 1), Tile(suit: .m, rank: 9),
+            Tile(suit: .p, rank: 1), Tile(suit: .p, rank: 9),
+            Tile(suit: .s, rank: 1), Tile(suit: .s, rank: 9),
+            Tile(honor: .wind(.east)), Tile(honor: .wind(.south)),
+            Tile(honor: .wind(.west)), Tile(honor: .wind(.north)),
+            Tile(honor: .white), Tile(honor: .green),
+            Tile(honor: .red),
+        ]
+        XCTAssertEqual(hand.count, 13)
+        let shanten = Shanten.compute(closed: hand)
+        XCTAssertEqual(shanten, 0, "13 unique terminals/honors = 国士 tenpai (waiting for any pair)")
+    }
+
+    func testShantenKokushiOneShanten() {
+        // 国士 1-shanten: 12 unique terminals/honors + 1 duplicate
+        let hand: [Tile] = [
+            Tile(suit: .m, rank: 1), Tile(suit: .m, rank: 9),
+            Tile(suit: .p, rank: 1), Tile(suit: .p, rank: 9),
+            Tile(suit: .s, rank: 1), Tile(suit: .s, rank: 9),
+            Tile(honor: .wind(.east)), Tile(honor: .wind(.south)),
+            Tile(honor: .wind(.west)), Tile(honor: .wind(.north)),
+            Tile(honor: .white), Tile(honor: .green),
+            Tile(suit: .m, rank: 1),  // duplicate of 1m
+        ]
+        // Missing 中 entirely. Has 12 unique + 1 dup. shanten = 1.
+        let shanten = Shanten.compute(closed: hand)
+        XCTAssertEqual(shanten, 1, "12 unique terminals/honors + 1 dup of existing = 国士 1-shanten")
+    }
 }
