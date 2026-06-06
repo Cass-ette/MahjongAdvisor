@@ -6,7 +6,6 @@ Packages/
 *.xcodeproj/
 xcuserdata/
 DerivedData/
-.build/
 Package.resolved
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
@@ -14,7 +13,6 @@ Package.resolved
 
 # Logs
 *.log
-~/Library/Logs/MahjongAdvisor/
 
-# Test fixtures (committed; redaction required before commit)
+# Test fixtures with sensitive data (require redaction before committing)
 MahjongOCR/Tests/MahjongOCRTests/Fixtures/*.raw.png
