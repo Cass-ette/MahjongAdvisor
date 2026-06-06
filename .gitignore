@@ -1,0 +1,20 @@
+# Swift / Xcode
+.DS_Store
+.build/
+.swiftpm/
+Packages/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+.build/
+Package.resolved
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Logs
+*.log
+~/Library/Logs/MahjongAdvisor/
+
+# Test fixtures (committed; redaction required before commit)
+MahjongOCR/Tests/MahjongOCRTests/Fixtures/*.raw.png
