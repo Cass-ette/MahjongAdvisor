@@ -112,4 +112,64 @@ final class ShantenTests: XCTestCase {
         let shanten = Shanten.compute(closed: hand)
         XCTAssertEqual(shanten, 1, "12 unique terminals/honors + 1 dup of existing = 国士 1-shanten")
     }
+
+    func testShantenOpenHand_Tenpai() {
+        // 2 fixed melds + 7 closed (2 closed melds + 1 dead tile) → 14th draw pairs → tenpai
+        let chi = Meld(
+            kind: .chi,
+            tiles: [Tile(suit: .m, rank: 2), Tile(suit: .m, rank: 3), Tile(suit: .m, rank: 4)],
+            fromPlayer: 1
+        )
+        let pon = Meld(
+            kind: .pon,
+            tiles: [Tile(suit: .p, rank: 7), Tile(suit: .p, rank: 7), Tile(suit: .p, rank: 7)],
+            fromPlayer: 3
+        )
+        let closed: [Tile] = [
+            Tile(suit: .p, rank: 2), Tile(suit: .p, rank: 3), Tile(suit: .p, rank: 4),
+            Tile(suit: .p, rank: 5), Tile(suit: .p, rank: 6), Tile(suit: .p, rank: 7),
+            Tile(honor: .white),
+        ]
+        let hand = Hand(
+            closedTiles: closed,
+            melds: [chi, pon],
+            seatWind: .east,
+            roundWind: .east,
+            isRiichi: false,
+            remainingTiles: 50,
+            redFivesRemaining: [:]
+        )
+        let shanten = Shanten.computeOpen(hand: hand)
+        XCTAssertEqual(shanten, 0, "2 fixed melds + 2 closed melds + 1 dead + draw = tenpai")
+    }
+
+    func testShantenOpenHand_OneShanten() {
+        // 2 fixed melds + 8 closed (1 closed meld + 1 pair + 3 disconnected) = 14 tiles
+        let pon = Meld(
+            kind: .pon,
+            tiles: [Tile(honor: .wind(.east)), Tile(honor: .wind(.east)), Tile(honor: .wind(.east))],
+            fromPlayer: 1
+        )
+        let chiMeld = Meld(
+            kind: .chi,
+            tiles: [Tile(suit: .s, rank: 3), Tile(suit: .s, rank: 4), Tile(suit: .s, rank: 5)],
+            fromPlayer: 2
+        )
+        let closed: [Tile] = [
+            Tile(suit: .m, rank: 1), Tile(suit: .m, rank: 2), Tile(suit: .m, rank: 3),
+            Tile(suit: .p, rank: 7), Tile(suit: .p, rank: 7),
+            Tile(suit: .p, rank: 1), Tile(suit: .p, rank: 9), Tile(suit: .s, rank: 5),
+        ]
+        let hand = Hand(
+            closedTiles: closed,
+            melds: [pon, chiMeld],
+            seatWind: .east,
+            roundWind: .east,
+            isRiichi: false,
+            remainingTiles: 50,
+            redFivesRemaining: [:]
+        )
+        let shanten = Shanten.computeOpen(hand: hand)
+        XCTAssertEqual(shanten, 1, "1 closed meld + 1 pair + 3 disconnected + 2 fixed = 1 shanten")
+    }
 }

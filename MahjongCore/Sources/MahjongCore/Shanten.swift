@@ -13,6 +13,26 @@ public enum Shanten {
         return min(standard, chiitoitsu, kokushi)
     }
 
+    /// Computes shanten for an open hand (副露). Fixed melds (chi/pon/open-kan)
+    /// are not decomposable, so each one "saves" 2 shanten compared to a
+    /// closed hand that would need to form the meld from its closed tiles.
+    /// Formula: openShanten = closedShanten(closedTiles) - 2 * fixedMeldCount.
+    public static func computeOpen(hand: Hand) -> Int {
+        // For open hands, fixed melds are not decomposable.
+        // Each fixed meld "saves" 2 shanten (compared to needing to form it from closed).
+        let fixedMeldCount = hand.melds.filter { meld in
+            if case .chi = meld.kind { return true }
+            if case .pon = meld.kind { return true }
+            if case .kan(let closed) = meld.kind, !closed { return true }
+            return false
+        }.count
+
+        let closedShanten = compute(closed: hand.closedTiles)
+        let openShanten = closedShanten - 2 * fixedMeldCount
+
+        return openShanten
+    }
+
     /// 七対 (seven pairs) shanten: 6 pairs = tenpai (0), 7 pairs = agari (-1).
     /// Formula: shanten = max(-1, 6 - pair_count).
     /// Note: 七対 requires 7 distinct pairs, so a "quad" (4-of-a-kind) counts
