@@ -39,7 +39,6 @@ public enum Recommend {
                 redFivesRemaining: hand.redFivesRemaining
             )
 
-            let totalCount = ukeIra.reduce(0) { $0 + $1.count }
             candidates.append((discard, shantenAfter, ukeIra))
         }
 
