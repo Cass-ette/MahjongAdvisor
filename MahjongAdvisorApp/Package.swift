@@ -20,5 +20,9 @@ let package = Package(
             ],
             resources: [.copy("Resources")]
         ),
+        .testTarget(
+            name: "MahjongAdvisorAppTests",
+            dependencies: ["MahjongAdvisorApp"]
+        ),
     ]
 )
