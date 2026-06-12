@@ -1,47 +1,48 @@
 # MahjongAdvisor
 
-A macOS native SwiftUI app that assists with Japanese riichi mahjong (Mahjong Soul / 雀魂) by providing real-time discard recommendations.
+macOS native advisor for Mahjong Soul (雀魂). OCRs the game window and shows
+the recommended discard in a small floating panel.
 
-## Features
+## Status
 
-- Observes Mahjong Soul game window via screen capture
-- OCRs hand and table state every 3 seconds
-- Computes best discard using shanten + uke-ira calculation
-- Displays recommendations in a non-intrusive floating panel
-- Does not automate play - you remain in control
+**v0.1 — Internal alpha.** The MahjongCore algorithm is feature-complete with
+30+ unit tests. The MahjongOCR pipeline is structurally complete; real-world
+accuracy requires calibration against Mahjong Soul screenshots. The App shell
+is functional but the edit-mode UX is stubbed.
 
-## Requirements
-
-- macOS 14.0+ (Sonoma)
-- Screen Recording permission
-- Mahjong Soul running on primary display
-
-## Architecture
-
-Three Swift packages:
-- **MahjongCore**: Pure algorithm library (shanten, uke-ira, recommendation logic)
-- **MahjongOCR**: Vision framework + template matching + 3-pass aggregation
-- **MahjongAdvisorApp**: SwiftUI floating panel + scheduler + UI
-
-## Building
+## Build
 
 ```bash
 swift build
 ```
 
-## Testing
+## Run
+
+```bash
+swift run MahjongAdvisorApp
+```
+
+Requires macOS 14.0+ and Screen Recording permission (granted on first launch).
+
+## Test
 
 ```bash
 swift test
 ```
 
-Note: OCR integration tests require local fixtures and are skipped on CI.
+OCR integration tests are skipped on CI (no `CGWindowListCopyWindowInfo` /
+`ScreenCaptureKit` in headless runners). Run locally with:
 
-## Distribution
+```bash
+swift test --filter OCR
+```
 
-Direct download only (Developer ID signed + notarized). Not available on Mac App Store.
+## Calibration
 
-## Documentation
+The first time you use MahjongAdvisor, the OCR crop coordinates may not match
+your Mahjong Soul window. Use **Menu Bar → 校准窗口布局** to walk through
+clicking 5 anchor points.
 
-- Design spec: `docs/superpowers/specs/2026-06-06-mahjong-advisor-design.md`
-- Implementation plan: `docs/superpowers/plans/2026-06-06-mahjong-advisor.md`
+See `docs/superpowers/specs/2026-06-06-mahjong-advisor-design.md` for the
+full design spec and `docs/superpowers/plans/2026-06-06-mahjong-advisor.md`
+for the implementation plan.
