@@ -5,7 +5,7 @@ import MahjongCore
 
 /// Matches a tile image against the template library.
 /// Uses normalized cross-correlation (NCC) for template matching.
-public final class TemplateMatcher: @unchecked Sendable {
+public class TemplateMatcher: @unchecked Sendable {
     public let library: TileTemplateLibrary
 
     public init(library: TileTemplateLibrary) {
@@ -14,7 +14,7 @@ public final class TemplateMatcher: @unchecked Sendable {
 
     /// Matches a tile-sized image against all templates.
     /// Returns sorted matches (highest score first), capped at topN.
-    public func match(tileImage: CGImage, topN: Int = 3) -> [TileMatch] {
+    open func match(tileImage: CGImage, topN: Int = 3) -> [TileMatch] {
         // v1 stub: returns uniform low scores (no real matching yet)
         // Real implementation will use vImage / Accelerate framework
         // for normalized cross-correlation (NCC) template matching.
